@@ -11,6 +11,12 @@
 1. VS Code Extension: Python (by Microsoft)
 1. RabbitMQ
 
+# Getting Started
+1. Fork this starter repo into your GitHub.
+1. Clone your repo down to your machine.
+1. View / Command Palette - then Python: Select Interpreter
+1. Select your conda environment. 
+
 # Program Details
 
 ## Project Libraries
@@ -43,3 +49,12 @@ This program is responsible for emit_messages from a dedicated CSV file via Rabb
         - host (str): host name or IP address of rabbitmq server
         - queue_name (str): the name of the queue
         - message (str): message being sent
+    - stream_csv_messages: read input file and send each row as a message to a dedicated queue for the worker. This program will also wait 30 seconds between messages.
+        - input_file_name (str): The name of the CSV file
+        - host (str): host name or IP address of the rabbitmq server
+        - queue_name1 (str): the name of the queue for the first queue
+        - queue_name2 (str): the name of the queue for the second queue
+        - queue_name3 (str): the name of the queue for the third queue
+
+### Screenshots
+![Alt text](Screenshots/bbq_producer:rabbitmq.png)
