@@ -60,4 +60,4 @@ This program is responsible for emit_messages from a dedicated CSV file via Rabb
         - queue_name3 (str): the name of the queue for the third queue
 
 ### Screenshots
-![Alt text](Screenshots/bbq_producer:rabbitmq.png)
+![Alt text](Screenshots/bbq_producer-terminal-rabbitmq.png)
