@@ -45,7 +45,10 @@ This program is responsible for emit_messages from a dedicated CSV file via Rabb
     - QUEUE3: Set dedicated queue for food B temperature - 03-food-B
 1. Define Program Functions
     - offer_rabbitmq_admin_site: offers the user to open the RabbitMQ admin page
-    - send_to_queue: connect and declare the queue and print message of what queue and server the message was sent to.
+    - prepare_message: creates tuple to send message information to the appropriate queue. It then creates a binary message using .encode.
+        - row: row from csv file
+        - field index: specific row index for the field to pass into the message
+    - send_message: connect and declare the queue and print message of what queue and server the message was sent to.
         - host (str): host name or IP address of rabbitmq server
         - queue_name (str): the name of the queue
         - message (str): message being sent

@@ -38,7 +38,32 @@ def offer_rabbitmq_admin_site(show_offer):
          if ans.lower() == "y":
             webbrowser.open_new("http://localhost:15672/#/queues")
             print()
+def prepare_message(row,field_index):
+    """
+    Returns timestamp and the desired field index value to send as a tuple
+    Checks if the field_value is not empty then it will be a float value, else it will pass
+    that no data was received from the row. 
+    """
+    timestamp = row[0]
+    if field_index < len(row):
+        field_value_str = row[field_index]
+        if field_value_str:  # Check if the field_value_str is not empty
+            try:
+                field_value = float(field_value_str)
+            except ValueError:
+                field_value = "Invalid float value"
+        else:
+            field_value = "No data received from row"
+    else:
+        field_value = "No data received from row"
 
+    # construct binary message from data
+    fstring_message= f"[{timestamp},{field_value}]"
+    message = fstring_message.encode()
+
+    logger.info(f"Prepared binary message {message}....")
+
+    return message
 
 def send_message(host: str, queue_name: str, message: str):
     """
@@ -67,7 +92,7 @@ def send_message(host: str, queue_name: str, message: str):
         # every message passes through an exchange
         ch.basic_publish(exchange="", routing_key=queue_name, body=message)
         # print a message to the console for the user
-        print(f" [x] Sent {message}")
+        print(f" [x] Sent {message} to {queue_name}")
     except pika.exceptions.AMQPConnectionError as e:
         print(f"Error: Connection to RabbitMQ server failed: {e}")
         sys.exit(1)
@@ -99,32 +124,21 @@ def stream_csv_messages (input_file_name: str,host: str,queue_name1: str, queue_
         ch.queue_declare(queue=queue_name2, durable=True) # queue for "02-food-A"
         ch.queue_declare(queue=queue_name3, durable=True) # queue for "03-food-B"
 
-        # initialize empty variables for messages
-        message1 = ""
-        message2 = ""
-        message3 = ""
-
-        # ensure header row is skipped
-        message1 = message1[1:]
-        message2 = message2[1:]
-        message3 = message3[1:]
-
-
+        
         logger.info(f"Reading messages from {input_file_name}...")
+        logger.info(f"--- USER GUIDE: To close the program please select CTRL + c on your keyboard. ---")
 
         with open(input_file_name,"r",encoding="utf-8") as input_file:
             reader = csv.reader(input_file,delimiter=",")
             next(reader,None)
 
             for row in reader:
-                # join the elements in a row into a single message
-                message1 = ",".join([row[index] for index in [0,1]]) # date/time stamp & smoker temperature
-                message2 = ",".join([row[index] for index in [0,2]]) # date/time stamp & food A temperature
-                message3 = ",".join([row[index] for index in [0,3]]) # date/time stamp & food B temperature
+                timestamp = row[0]
+                
                 # send the messages to the desired queue
-                send_message(host,queue_name1,message1)
-                send_message(host,queue_name2,message2)
-                send_message(host,queue_name3,message3)
+                send_message(host,queue_name1,prepare_message(row,1))
+                send_message(host,queue_name2,prepare_message(row,2))
+                send_message(host,queue_name3,prepare_message(row,3))
                 time.sleep(30) # wait 30 seconds between messages
 
     except pika.exceptions.AMQPConnectionError as e:
