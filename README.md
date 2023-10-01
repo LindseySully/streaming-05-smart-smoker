@@ -32,6 +32,11 @@
     - Used to implement the AMQP protocol for RabbitMQ.
 1. webbrowser
     - Used to connect to the RabbitMQ Admin webpage
+1. deque
+    - Used to insert values and delete values.
+1. JSON
+    - JSON allows the convenient packaging of multiple pieces of data into one string that can be sent as a message.
+    - It supports more complex data structures, like sending numbers, strings, arrays, and objects together.
 
 ## Project Files
 
@@ -59,5 +64,33 @@ This program is responsible for emit_messages from a dedicated CSV file via Rabb
         - queue_name2 (str): the name of the queue for the second queue
         - queue_name3 (str): the name of the queue for the third queue
 
+### Consumer - bbq_consumer.py
+This program is responsible for listening for messages across 3 queues
+- QUEUE1: Set dedicated queue for smoker temperatures - 01-smoker
+- QUEUE2: Set dedicated queue for food A temperature - 02-food-A
+- QUEUE3: Set dedicated queue for food B temperature - 03-food-B
+
+1. Define Constant Variables
+    - HOST: Localhost - can be modified for different host information
+    - QUEUE1: Set dedicated queue for smoker temperatures - 01-smoker
+    - QUEUE2: Set dedicated queue for food A temperature - 02-food-A
+    - QUEUE3: Set dedicated queue for food B temperature - 03-food-B
+    - SMOKER_ALERT: Set temperature change for smoker changes less than 15 F in 2.5 minutes
+    - FOOD_ALERT: Set temperature change for food changes less than 1 F in 10 minutes.
+1. Define deque max length
+    - smoker_temperature - Set to 5; At one reading every 1/2 minute, the smoker deque max length is 5 (2.5 min * 1 reading/0.5 min)
+    - food_a_temperature - Set to 20; At one reading every 1/2 minute, the food deque max length is 20 (10 min * 1 reading/0.5 min) 
+    - food_b_temperature - Set to 20; At one reading every 1/2 minute, the food deque max length is 20 (10 min * 1 reading/0.5 min) 
+1. Define Functions
+    - record_alert_to_csv: opens a CSV file to write the alert message to a CSV file from the queue that prompts an alert.
+        - Food_stall_alerts.csv: Set for food stall alerts
+        - Smoker_alerts.csv: Set for smoker stall alerts
+    - smoker_callback: define behavior on getting a message from the 01-smoker queue. It looks for a potential stall if the smoker temperature decreases by more than 15 degrees in 2.5 minutes.
+    - food_a_callback: define a behavior on getting a message from 02-food-A queue.
+    - food_b_callback: define a behavior on getting a message from 03-food-B queue.
+    - main: continuously listens for a message across 3 queues and processes a message using the appropriate callback functions.
+
 ### Screenshots
 ![Alt text](Screenshots/bbq_producer-terminal-rabbitmq.png)
+![Alt text](<Screenshots/Smoker Alert.png>)
+![Alt text](<Screenshots/Food Stall Alerts.png>)

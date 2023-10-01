@@ -13,6 +13,7 @@ import webbrowser
 import csv
 import time
 import os
+import json # added JSON to easily send complex data to consumer
 
 from util_logger import setup_logger
 logger, logname = setup_logger(__file__)
@@ -38,6 +39,7 @@ def offer_rabbitmq_admin_site(show_offer):
          if ans.lower() == "y":
             webbrowser.open_new("http://localhost:15672/#/queues")
             print()
+
 def prepare_message(row,field_index):
     """
     Returns timestamp and the desired field index value to send as a tuple
@@ -45,25 +47,21 @@ def prepare_message(row,field_index):
     that no data was received from the row. 
     """
     timestamp = row[0]
+    field_value = None
+
     if field_index < len(row):
         field_value_str = row[field_index]
         if field_value_str:  # Check if the field_value_str is not empty
             try:
                 field_value = float(field_value_str)
             except ValueError:
-                field_value = "Invalid float value"
+                logger.error(f"Invalid float value: {field_value_str}")
         else:
-            field_value = "No data received from row"
+            logger.warning("No data received from row")
     else:
-        field_value = "No data received from row"
+        logger.warning("Field index out of range")
 
-    # construct binary message from data
-    fstring_message= f"[{timestamp},{field_value}]"
-    message = fstring_message.encode()
-
-    logger.info(f"Prepared binary message {message}....")
-
-    return message
+    return field_value
 
 def send_message(host: str, queue_name: str, message: str):
     """
@@ -119,6 +117,17 @@ def stream_csv_messages (input_file_name: str,host: str,queue_name1: str, queue_
         # use the connection to create a communication channel
         ch = conn.channel()
 
+         # DELETE AND RE-DECLARE QUEUES
+        for queue in [queue_name1, queue_name2, queue_name3]:
+            try:
+                ch.queue_delete(queue=queue)
+                print(f"Queue {queue} deleted successfully.")
+            except Exception as e:
+                print(f"Error deleting queue {queue}: {e}")
+
+            ch.queue_declare(queue=queue, durable=True)
+            print(f"Queue {queue} declared successfully.")
+
         # use the channels to declare a durable queue
         ch.queue_declare(queue=queue_name1, durable=True) # queue for "01-smoker"
         ch.queue_declare(queue=queue_name2, durable=True) # queue for "02-food-A"
@@ -134,12 +143,30 @@ def stream_csv_messages (input_file_name: str,host: str,queue_name1: str, queue_
 
             for row in reader:
                 timestamp = row[0]
-                
-                # send the messages to the desired queue
-                send_message(host,queue_name1,prepare_message(row,1))
-                send_message(host,queue_name2,prepare_message(row,2))
-                send_message(host,queue_name3,prepare_message(row,3))
-                time.sleep(30) # wait 30 seconds between messages
+
+                 # Check if the message is valid and then send it
+                if prepare_message(row, 1) is not None:
+                    message = json.dumps({
+                        "timestamp": timestamp, 
+                        "value": prepare_message(row, 1)
+                    })
+                    send_message(host, queue_name1, message)
+
+                if prepare_message(row, 2) is not None:
+                    message = json.dumps({
+                        "timestamp": timestamp, 
+                        "value": prepare_message(row, 2)
+                    })
+                    send_message(host, queue_name2, message)
+
+                if prepare_message(row, 3) is not None:
+                    message = json.dumps({
+                        "timestamp": timestamp, 
+                        "value": prepare_message(row, 3)
+                    })
+                    send_message(host, queue_name3, message)
+
+                time.sleep(30)
 
     except pika.exceptions.AMQPConnectionError as e:
         print(f"Error: Connection to RabbitMQ server failed: {e}")
@@ -155,7 +182,7 @@ def stream_csv_messages (input_file_name: str,host: str,queue_name1: str, queue_
 if __name__ == "__main__":  
     # ask the user if they'd like to open the RabbitMQ Admin site
     # true shows the offer/false turns off the offer for the user
-    offer_rabbitmq_admin_site(show_offer=True)
+    offer_rabbitmq_admin_site(show_offer=False)
 
     # Stream messages from the CSV file and send them to RabbitMQ
     stream_csv_messages(INPUT_CSV_FILE,HOST,QUEUE1,QUEUE2,QUEUE3)
